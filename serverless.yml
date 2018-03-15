@@ -1,0 +1,90 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+service: book-lending-app-auth
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+frameworkVersion: ">=1.1.0 <2.0.0"
+
+custom:
+  TABLE_USER: book-lending-app-user
+
+resources:
+  Resources:
+    UserDynamoTable:
+      Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: "userId"
+            AttributeType: "S"
+        KeySchema:
+          -
+            AttributeName: "userId"
+            KeyType: "HASH"
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.TABLE_USER}
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  stage: dev
+  region: us-west-2
+  profile: mimurawil@gmail.com
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        Fn::GetAtt:
+          - UserDynamoTable
+          - Arn
+
+functions:
+  login:
+    handler: handlers/authenticate.handler
+    memorySize: 128
+    timeout: 6
+    runtime: nodejs6.10
+    environment:
+      TABLE: ${self:custom.TABLE_USER}
+      REGION: ${self:provider.region}
+      # you need to generate one JWT secret here... you can get one at https://www.grc.com/passwords.htm
+      JWT_SECRET: 
+    events:
+      - http:
+          path: book-lending-api/authentication
+          method: post
+          cors: true
+  register:
+    handler: handlers/register.handler
+    memorySize: 128
+    timeout: 6
+    runtime: nodejs6.10
+    environment:
+      TABLE: ${self:custom.TABLE_USER}
+      REGION: ${self:provider.region}
+    events:
+      - http:
+          path: book-lending-api/registration
+          method: post
+          cors: true
